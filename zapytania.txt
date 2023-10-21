@@ -1,4 +1,5 @@
 /* Films where actors are playing */
+
 select fa.actor_id, a.first_name,a.last_name,f.release_year,f.title from actor a 
 join film_actor fa on a.actor_id = fa.actor_id
 join film f on fa.film_id = f.film_id
@@ -30,9 +31,6 @@ order by customer_id,sum_rental desc
 limit 200;
 
 
-
-
-
 /*this query shows title of films, name and surrname of actor and category film */
 
 select f.title as title_film,a.first_name as actor_name, a.last_name as actor_surrname,c.name as category_film from film f
@@ -42,41 +40,22 @@ inner join actor a on fa.actor_id = a.actor_id
 inner join category c on fc.category_id = fc.category_id 
 limit 100000;
 
-create index my_index on actor (actor_id,first_name,last_name,last_update)
-
-
-/*This query randomly assigns to every record in column release_year a years
-from 1990 to 2023 */
-
-UPDATE film
-SET release_year = floor(random() * (2023 - 1990 + 1)) + 1990;
-
-
-
-
-
 
 /* In this query we check every customer ID where is below 100 and other
 information */
-
 
 select * from rental
 do $$ 
 declare
    
-   v_customer record;
-   v_rental_id record;
-   
-   
-    begin 
+v_customer record;
+v_rental_id record;
+begin 
       for v_customer in (select * from rental where customer_id < 100)
 	  loop
 	    raise notice 'Customer ID: % , Last update: %, Staff ID: % , Rental ID: %'
-		,v_customer.customer_id,v_customer.last_update,v_customer.staff_id, v_customer.rental_id;
-	  
-	   
+		,v_customer.customer_id,v_customer.last_update,v_customer.staff_id, v_customer.rental_id	  	   
 	 end loop;
-	  
 end $$;
 
 
@@ -84,7 +63,6 @@ end $$;
 
 do $$ 
 declare
-     
   row_number record;
   v_start_amount numeric := 5.00;
   v_end_amount numeric := 7.00; 
@@ -95,12 +73,7 @@ declare
 		 loop 
 		   raise notice 'Customer ID: %, Amount: %',row_number.customer_id,row_number.amount;
          end loop;
-
 end $$;
-
-
-
-
 
 
 /* This query shows customer id where amount is between 5.00 and 7.00 zl 
@@ -109,9 +82,9 @@ with name and surrname of customer */
 do $$ 
 declare
      
-  row_number record;
-  v_start_amount numeric := 5.00;
-  v_end_amount numeric := 7.00; 
+row_number record;
+v_start_amount numeric := 5.00;
+v_end_amount numeric := 7.00; 
   
 	
 	begin
@@ -123,7 +96,6 @@ declare
 		   raise notice 'Customer ID: % , Amount: % , Customer Name: % ,  Customer Surrname: %',
 		   row_number.customer_id,row_number.amount,row_number.first_name,row_number.last_name;
          end loop;
-
 end $$;
 
 
@@ -147,14 +119,6 @@ where year (release_year) = year_production;
    end if;
 end;
 $$ language plpgsql;
-
-
-
-
-
-
-
-
 
 
 /* This procedure shows get id as parametr and
@@ -184,3 +148,24 @@ BEGIN
   END IF;
 END;
 $$ LANGUAGE plpgsql;
+
+
+/*After adding record new ID actor, column will assing actual date  */
+
+create or replace function update_date()
+returns trigger as 
+$$
+begin
+   
+   if new.actor_id > 200 then
+   
+   new.last_update = now();
+   end if;
+return new;
+end;
+$$ language plpgsql;
+
+create trigger my_trigger
+before insert or update on actor
+for each row 
+execute function update_date();
