@@ -1,0 +1,186 @@
+/* Films where actors are playing */
+select fa.actor_id, a.first_name,a.last_name,f.release_year,f.title from actor a 
+join film_actor fa on a.actor_id = fa.actor_id
+join film f on fa.film_id = f.film_id
+
+
+/* All films where length is below 50 minutes. 
+We have title and numbers of films with this 
+especially record and condition where rental_rate must be above 3.50 numbered descending*/
+
+select count (title),title,rental_duration as number_films from film
+where length < 50
+group by title, rental_duration
+having sum (rental_rate) > 3.50
+order by title,rental_duration desc
+
+
+/*Staff person  whos served the client with all films sum rental 
+and which day film was returned with limit 200 customers */
+
+select  r.staff_id, s.first_name,s.last_name,
+c.first_name as name_customer, c.last_name as surrname_customer, p.amount as sum_rental, 
+r.return_date,c.customer_id
+from rental r
+inner join staff s on r.staff_id = s.staff_id 
+inner join customer c on c.customer_id = r.customer_id
+inner join payment p on p.customer_id = c.customer_id
+inner join store st on c.store_id = st.store_id
+order by customer_id,sum_rental desc
+limit 200;
+
+
+
+
+
+/*this query shows title of films, name and surrname of actor and category film */
+
+select f.title as title_film,a.first_name as actor_name, a.last_name as actor_surrname,c.name as category_film from film f
+inner join film_actor fa on f.film_id = f.film_id
+inner join film_category fc on fc.film_id = f.film_id
+inner join actor a on fa.actor_id = a.actor_id
+inner join category c on fc.category_id = fc.category_id 
+limit 100000;
+
+create index my_index on actor (actor_id,first_name,last_name,last_update)
+
+
+/*This query randomly assigns to every record in column release_year a years
+from 1990 to 2023 */
+
+UPDATE film
+SET release_year = floor(random() * (2023 - 1990 + 1)) + 1990;
+
+
+
+
+
+
+/* In this query we check every customer ID where is below 100 and other
+information */
+
+
+select * from rental
+do $$ 
+declare
+   
+   v_customer record;
+   v_rental_id record;
+   
+   
+    begin 
+      for v_customer in (select * from rental where customer_id < 100)
+	  loop
+	    raise notice 'Customer ID: % , Last update: %, Staff ID: % , Rental ID: %'
+		,v_customer.customer_id,v_customer.last_update,v_customer.staff_id, v_customer.rental_id;
+	  
+	   
+	 end loop;
+	  
+end $$;
+
+
+/* This query check payment of customers between two numbers */
+
+do $$ 
+declare
+     
+  row_number record;
+  v_start_amount numeric := 5.00;
+  v_end_amount numeric := 7.00; 
+	
+	begin
+         for row_number in select customer_id,amount from payment
+		 where amount between v_start_amount and v_end_amount
+		 loop 
+		   raise notice 'Customer ID: %, Amount: %',row_number.customer_id,row_number.amount;
+         end loop;
+
+end $$;
+
+
+
+
+
+
+/* This query shows customer id where amount is between 5.00 and 7.00 zl 
+with name and surrname of customer */
+
+do $$ 
+declare
+     
+  row_number record;
+  v_start_amount numeric := 5.00;
+  v_end_amount numeric := 7.00; 
+  
+	
+	begin
+         for row_number in select customer_id,amount,c.first_name,c.last_name from payment p
+		 natural join customer c 
+		 where amount between v_start_amount and v_end_amount
+		 order by customer_id desc
+		 loop 
+		   raise notice 'Customer ID: % , Amount: % , Customer Name: % ,  Customer Surrname: %',
+		   row_number.customer_id,row_number.amount,row_number.first_name,row_number.last_name;
+         end loop;
+
+end $$;
+
+
+/* We can check there which film was procuded after writing date in function */
+
+create or replace procedure GetFilm(year_production int)
+AS $$
+declare 
+   v_production varchar;
+   v_year varchar;
+begin
+select release_year,title
+into v_production,v_year
+from film 
+where year (release_year) = year_production;
+
+   if found then
+       raise notice 'In year % was produced film %' ,v_production,v_year;
+   else 
+          raise exception 'In this year none of films was produced';
+   end if;
+end;
+$$ language plpgsql;
+
+
+
+
+
+
+
+
+
+
+/* This procedure shows get id as parametr and
+return film title and category where actor with
+particular id was played */
+
+CREATE OR REPLACE PROCEDURE get_actor_film(actory_id integer)
+AS $$
+DECLARE
+  v_title varchar;
+  v_category varchar;
+BEGIN
+  SELECT f.title, c.name 
+  INTO v_title, v_category
+  FROM actor a
+  JOIN film_actor fa ON fa.actor_id = a.actor_id
+  JOIN film f ON f.film_id = fa.film_id
+  JOIN film_category fc ON fc.film_id = f.film_id
+  JOIN category c ON c.category_id = fc.category_id
+  WHERE a.actor_id = actory_id;
+  
+  IF FOUND THEN
+    RAISE NOTICE 'Film title: %', v_title;
+    RAISE NOTICE 'Category film: %', v_category;
+  ELSE
+    RAISE EXCEPTION 'Actor with id % not found', actor_id;
+  END IF;
+END;
+$$ LANGUAGE plpgsql;
